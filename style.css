@@ -2,13 +2,14 @@ body {
   margin: 0;
   overflow: hidden;
   background: black;
+  touch-action: none;
 }
 
 canvas {
   display: block;
 }
 
-/* Joystick */
+/* Joystick base */
 #joystick {
   position: absolute;
   bottom: 40px;
@@ -17,6 +18,17 @@ canvas {
   height: 120px;
   border: 2px solid white;
   border-radius: 50%;
+}
+
+/* Joystick stick */
+#stick {
+  width: 50px;
+  height: 50px;
+  background: white;
+  border-radius: 50%;
+  position: absolute;
+  left: 35px;
+  top: 35px;
 }
 
 /* Buttons */
@@ -28,7 +40,7 @@ button {
 }
 
 #warpBtn {
-  bottom: 100px;
+  bottom: 110px;
 }
 
 #landBtn {
