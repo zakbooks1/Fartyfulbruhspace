@@ -15,33 +15,57 @@ let ship = { x: 0, y: 0, speed: 3 };
 let player = { x: 0, y: 0, speed: 2 };
 
 // ======================
-// JOYSTICK
+// JOYSTICK (FIXED)
 // ======================
 let joy = { x: 0, y: 0 };
 
 const joystick = document.getElementById("joystick");
+const stick = document.getElementById("stick");
 
-joystick.addEventListener("touchmove", e => {
+let dragging = false;
+
+joystick.addEventListener("touchstart", (e) => {
+  dragging = true;
+});
+
+joystick.addEventListener("touchmove", (e) => {
+  if (!dragging) return;
+
   let touch = e.touches[0];
   let rect = joystick.getBoundingClientRect();
 
   let dx = touch.clientX - (rect.left + rect.width / 2);
   let dy = touch.clientY - (rect.top + rect.height / 2);
 
-  joy.x = dx / 50;
-  joy.y = dy / 50;
+  let dist = Math.sqrt(dx * dx + dy * dy);
+  let max = 40;
+
+  if (dist > max) {
+    dx = (dx / dist) * max;
+    dy = (dy / dist) * max;
+  }
+
+  joy.x = dx / max;
+  joy.y = dy / max;
+
+  stick.style.left = dx + 40 + "px";
+  stick.style.top = dy + 40 + "px";
 });
 
 joystick.addEventListener("touchend", () => {
+  dragging = false;
   joy.x = 0;
   joy.y = 0;
+
+  stick.style.left = "35px";
+  stick.style.top = "35px";
 });
 
 // ======================
-// BUTTONS
+// BUTTONS (FIXED)
 // ======================
-document.getElementById("warpBtn").onclick = warp;
-document.getElementById("landBtn").onclick = togglePlanet;
+document.getElementById("warpBtn").addEventListener("click", warp);
+document.getElementById("landBtn").addEventListener("click", togglePlanet);
 
 // ======================
 // RANDOM
@@ -82,6 +106,10 @@ function update() {
   } else {
     player.x += joy.x * player.speed;
     player.y += joy.y * player.speed;
+
+    // FIX: camera follows player now
+    camera.x = player.x;
+    camera.y = player.y;
   }
 }
 
@@ -127,10 +155,10 @@ function draw() {
 
     // ship
     ctx.fillStyle = "cyan";
-    ctx.fillRect(ship.x - 5, ship.y - 5, 10, 10);
+    ctx.fillRect(ship.x - 6, ship.y - 6, 12, 12);
 
   } else {
-    // planet terrain (simple noise-like)
+    // terrain
     for (let x = -500; x < 500; x += 20) {
       let h = Math.sin((x + planetSeed) * 0.05) * 50;
 
@@ -140,7 +168,7 @@ function draw() {
 
     // player
     ctx.fillStyle = "orange";
-    ctx.fillRect(player.x - 5, player.y - 5, 10, 10);
+    ctx.fillRect(player.x - 6, player.y - 6, 12, 12);
   }
 
   ctx.restore();
