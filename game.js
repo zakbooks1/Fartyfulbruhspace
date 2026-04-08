@@ -1,18 +1,16 @@
-
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
-let shipRotationOffset = -Math.PI / 2;
-
 // ======================
-// GAME STATE
+// STATE
 // ======================
 let mode = "space";
 
 let camera = { x: 0, y: 0 };
+let cameraTarget = { x: 0, y: 0 };
 
 let ship = { x: 0, y: 0, speed: 3 };
 let player = { x: 0, y: 0, speed: 2 };
@@ -20,32 +18,7 @@ let player = { x: 0, y: 0, speed: 2 };
 let angle = 0;
 
 // ======================
-// AUTO SCALE FUNCTION
-// ======================
-function drawSprite(shipImg, ship.x, ship.y, 50, angle + shipRotationOffset); {
-  if (!img.complete) return;
-
-  let aspect = img.width / img.height;
-
-  let width, height;
-
-  if (aspect > 1) {
-    width = targetSize;
-    height = targetSize / aspect;
-  } else {
-    height = targetSize;
-    width = targetSize * aspect;
-  }
-
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.rotate(rotation);
-  ctx.drawImage(img, -width / 2, -height / 2, width, height);
-  ctx.restore();
-}
-
-// ======================
-// LOAD IMAGES
+// LOAD SPRITES
 // ======================
 function loadImage(src) {
   const img = new Image();
@@ -58,7 +31,48 @@ const playerImg = loadImage("assets/player.png");
 const planetImg = loadImage("assets/planet.png");
 
 // ======================
-// JOYSTICK
+// DRAW SPRITE (AUTO SCALE)
+// ======================
+function drawSprite(img, x, y, size, rot = 0, alpha = 1) {
+  if (!img.complete) return;
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+
+  let aspect = img.width / img.height;
+
+  let w, h;
+  if (aspect > 1) {
+    w = size;
+    h = size / aspect;
+  } else {
+    h = size;
+    w = size * aspect;
+  }
+
+  ctx.translate(x, y);
+  ctx.rotate(rot);
+  ctx.drawImage(img, -w / 2, -h / 2, w, h);
+
+  ctx.restore();
+}
+
+// ======================
+// PARALLAX STARS
+// ======================
+const stars = [];
+
+for (let i = 0; i < 150; i++) {
+  stars.push({
+    x: Math.random() * 4000 - 2000,
+    y: Math.random() * 4000 - 2000,
+    layer: Math.random(), // 0 = far, 1 = close
+    size: Math.random() * 2 + 1
+  });
+}
+
+// ======================
+// INPUT (JOYSTICK)
 // ======================
 let joy = { x: 0, y: 0 };
 
@@ -72,11 +86,11 @@ joystick.addEventListener("touchstart", () => dragging = true);
 joystick.addEventListener("touchmove", (e) => {
   if (!dragging) return;
 
-  let touch = e.touches[0];
+  let t = e.touches[0];
   let rect = joystick.getBoundingClientRect();
 
-  let dx = touch.clientX - (rect.left + rect.width / 2);
-  let dy = touch.clientY - (rect.top + rect.height / 2);
+  let dx = t.clientX - (rect.left + rect.width / 2);
+  let dy = t.clientY - (rect.top + rect.height / 2);
 
   let dist = Math.sqrt(dx * dx + dy * dy);
   let max = 40;
@@ -89,17 +103,14 @@ joystick.addEventListener("touchmove", (e) => {
   joy.x = dx / max;
   joy.y = dy / max;
 
-  stick.style.left = dx + 40 + "px";
-  stick.style.top = dy + 40 + "px";
+  stick.style.transform = `translate(${dx}px, ${dy}px)`;
 });
 
 joystick.addEventListener("touchend", () => {
   dragging = false;
   joy.x = 0;
   joy.y = 0;
-
-  stick.style.left = "35px";
-  stick.style.top = "35px";
+  stick.style.transform = `translate(0px, 0px)`;
 });
 
 // ======================
@@ -119,52 +130,50 @@ function rand(seed) {
 // ======================
 // GALAXY
 // ======================
-const stars = [];
-const seed = 9999;
+const starsBig = [];
 
 for (let i = 0; i < 100; i++) {
-  stars.push({
-    x: rand(i + seed) * 4000 - 2000,
-    y: rand(i * 2 + seed) * 4000 - 2000
+  starsBig.push({
+    x: rand(i) * 4000 - 2000,
+    y: rand(i * 2) * 4000 - 2000
   });
 }
-
-// ======================
-// PLANET
-// ======================
-let planetSeed = 0;
 
 // ======================
 // UPDATE
 // ======================
 function update() {
+  // MOVEMENT
   if (mode === "space") {
     ship.x += joy.x * ship.speed;
     ship.y += joy.y * ship.speed;
 
-    camera.x = ship.x;
-    camera.y = ship.y;
+    cameraTarget.x = ship.x;
+    cameraTarget.y = ship.y;
 
     if (joy.x !== 0 || joy.y !== 0) {
       angle = Math.atan2(joy.y, joy.x);
     }
-
   } else {
     player.x += joy.x * player.speed;
     player.y += joy.y * player.speed;
 
-    camera.x = player.x;
-    camera.y = player.y;
+    cameraTarget.x = player.x;
+    cameraTarget.y = player.y;
   }
+
+  // SMOOTH CAMERA (EASE)
+  camera.x += (cameraTarget.x - camera.x) * 0.08;
+  camera.y += (cameraTarget.y - camera.y) * 0.08;
 }
 
 // ======================
 // WARP
 // ======================
 function warp() {
-  let target = stars[Math.floor(Math.random() * stars.length)];
-  ship.x = target.x;
-  ship.y = target.y;
+  let t = starsBig[Math.floor(Math.random() * starsBig.length)];
+  ship.x = t.x;
+  ship.y = t.y;
 }
 
 // ======================
@@ -175,7 +184,6 @@ function togglePlanet() {
     mode = "planet";
     player.x = ship.x;
     player.y = ship.y;
-    planetSeed = Math.random() * 1000;
   } else {
     mode = "space";
   }
@@ -191,21 +199,56 @@ function draw() {
   ctx.save();
   ctx.translate(canvas.width / 2 - camera.x, canvas.height / 2 - camera.y);
 
-  if (mode === "space") {
-    // stars
-    ctx.fillStyle = "white";
-    stars.forEach(s => {
-      ctx.fillRect(s.x, s.y, 2, 2);
-    });
+  // 🌌 PARALLAX STARS
+  ctx.fillStyle = "white";
+  stars.forEach(s => {
+    let parallaxX = s.x - camera.x * s.layer * 0.3;
+    let parallaxY = s.y - camera.y * s.layer * 0.3;
 
-    // ship (AUTO SCALED + ROTATED)
-    drawSprite(shipImg, ship.x, ship.y, 50, angle);
+    ctx.globalAlpha = 0.3 + s.layer * 0.7;
+    ctx.fillRect(parallaxX, parallaxY, s.size, s.size);
+  });
+  ctx.globalAlpha = 1;
+
+  if (mode === "space") {
+    // 🌟 GLOW EFFECT
+    ctx.shadowColor = "cyan";
+    ctx.shadowBlur = 20;
+
+    drawSprite(
+      shipImg,
+      ship.x,
+      ship.y,
+      60,
+      angle - Math.PI / 2,
+      1
+    );
+
+    ctx.shadowBlur = 0;
+
+    // 🔥 THRUSTER EFFECT
+    if (joy.y !== 0 || joy.x !== 0) {
+      ctx.fillStyle = "orange";
+      ctx.globalAlpha = 0.7;
+
+      ctx.beginPath();
+      ctx.arc(
+        ship.x - Math.cos(angle) * 20,
+        ship.y - Math.sin(angle) * 20,
+        6 + Math.random() * 4,
+        0,
+        Math.PI * 2
+      );
+      ctx.fill();
+
+      ctx.globalAlpha = 1;
+    }
 
   } else {
-    // planet (AUTO SCALED BIG)
+    // 🪐 PLANET
     drawSprite(planetImg, 0, 0, 300);
 
-    // player (AUTO SCALED)
+    // 👤 PLAYER
     drawSprite(playerImg, player.x, player.y, 40);
   }
 
