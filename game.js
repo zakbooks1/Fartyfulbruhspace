@@ -5,6 +5,8 @@ const ctx = canvas.getContext("2d");
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
+let shipRotationOffset = -Math.PI / 2;
+
 // ======================
 // GAME STATE
 // ======================
@@ -20,7 +22,7 @@ let angle = 0;
 // ======================
 // AUTO SCALE FUNCTION
 // ======================
-function drawSprite(img, x, y, targetSize = 40, rotation = 0) {
+function drawSprite(shipImg, ship.x, ship.y, 50, angle + shipRotationOffset); {
   if (!img.complete) return;
 
   let aspect = img.width / img.height;
