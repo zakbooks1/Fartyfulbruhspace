@@ -18,64 +18,32 @@ let player = { x: 0, y: 0, speed: 2 };
 let angle = 0;
 
 // ======================
-// DRAW PROCEDURAL SHIP
+// INVENTORY
 // ======================
-function drawShip(x, y, rot) {
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.rotate(rot);
+let inventory = {
+  ore: 0
+};
 
-  // Glow
-  ctx.shadowColor = "cyan";
-  ctx.shadowBlur = 20;
-
-  // Body
-  ctx.fillStyle = "#00bfff";
-  ctx.beginPath();
-  ctx.moveTo(0, -20);
-  ctx.lineTo(12, 20);
-  ctx.lineTo(-12, 20);
-  ctx.closePath();
-  ctx.fill();
-
-  ctx.shadowBlur = 0;
-
-  ctx.restore();
+// ======================
+// SAVE / LOAD
+// ======================
+function saveGame() {
+  localStorage.setItem("spaceGame", JSON.stringify(inventory));
 }
 
-// ======================
-// DRAW PROCEDURAL PLAYER
-// ======================
-function drawPlayer(x, y) {
-  ctx.save();
-  ctx.translate(x, y);
-
-  ctx.fillStyle = "orange";
-
-  // Head
-  ctx.beginPath();
-  ctx.arc(0, -8, 5, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Body
-  ctx.fillRect(-4, -3, 8, 12);
-
-  ctx.restore();
+function loadGame() {
+  let data = localStorage.getItem("spaceGame");
+  if (data) inventory = JSON.parse(data);
 }
 
-// ======================
-// DRAW PROCEDURAL PLANET
-// ======================
-function drawPlanet(x, y) {
-  let gradient = ctx.createRadialGradient(x, y, 20, x, y, 200);
-  gradient.addColorStop(0, "#2ecc71");
-  gradient.addColorStop(1, "#145a32");
+loadGame();
 
-  ctx.fillStyle = gradient;
-
-  ctx.beginPath();
-  ctx.arc(x, y, 150, 0, Math.PI * 2);
-  ctx.fill();
+// ======================
+// RANDOM
+// ======================
+function rand(seed) {
+  let x = Math.sin(seed) * 10000;
+  return x - Math.floor(x);
 }
 
 // ======================
@@ -90,6 +58,22 @@ for (let i = 0; i < 150; i++) {
     layer: Math.random()
   });
 }
+
+// ======================
+// ENEMY SHIPS
+// ======================
+let enemies = [];
+
+function spawnEnemy() {
+  enemies.push({
+    x: ship.x + Math.random() * 1000 - 500,
+    y: ship.y + Math.random() * 1000 - 500,
+    speed: 1 + Math.random()
+  });
+}
+
+// spawn enemies over time
+setInterval(spawnEnemy, 3000);
 
 // ======================
 // JOYSTICK
@@ -148,7 +132,7 @@ function warp() {
 }
 
 // ======================
-// LAND
+// LAND / EXIT
 // ======================
 function togglePlanet() {
   if (mode === "space") {
@@ -159,6 +143,30 @@ function togglePlanet() {
     mode = "space";
   }
 }
+
+// ======================
+// MINING
+// ======================
+function mine(x, y) {
+  let dist = Math.hypot(player.x - x, player.y - y);
+
+  if (mode === "planet" && dist < 50) {
+    inventory.ore += 1;
+    saveGame();
+  }
+}
+
+// ======================
+// CLICK TO MINE
+// ======================
+canvas.addEventListener("click", (e) => {
+  let rect = canvas.getBoundingClientRect();
+
+  let mx = e.clientX - rect.left - (canvas.width / 2 - camera.x);
+  let my = e.clientY - rect.top - (canvas.height / 2 - camera.y);
+
+  mine(mx, my);
+});
 
 // ======================
 // UPDATE
@@ -175,6 +183,16 @@ function update() {
       angle = Math.atan2(joy.y, joy.x);
     }
 
+    // enemies chase ship
+    enemies.forEach(e => {
+      let dx = ship.x - e.x;
+      let dy = ship.y - e.y;
+      let d = Math.hypot(dx, dy);
+
+      e.x += (dx / d) * e.speed;
+      e.y += (dy / d) * e.speed;
+    });
+
   } else {
     player.x += joy.x * player.speed;
     player.y += joy.y * player.speed;
@@ -183,7 +201,7 @@ function update() {
     cameraTarget.y = player.y;
   }
 
-  // Smooth camera
+  // smooth camera
   camera.x += (cameraTarget.x - camera.x) * 0.08;
   camera.y += (cameraTarget.y - camera.y) * 0.08;
 }
@@ -198,7 +216,7 @@ function draw() {
   ctx.save();
   ctx.translate(canvas.width / 2 - camera.x, canvas.height / 2 - camera.y);
 
-  // 🌌 PARALLAX STARS
+  // stars
   ctx.fillStyle = "white";
   stars.forEach(s => {
     let px = s.x - camera.x * s.layer * 0.3;
@@ -211,32 +229,46 @@ function draw() {
 
   if (mode === "space") {
 
-    // 🚀 SHIP + THRUSTER
-    drawShip(ship.x, ship.y, angle - Math.PI / 2);
+    // ship
+    ctx.fillStyle = "cyan";
+    ctx.beginPath();
+    ctx.arc(ship.x, ship.y, 10, 0, Math.PI * 2);
+    ctx.fill();
 
-    if (joy.x !== 0 || joy.y !== 0) {
-      ctx.fillStyle = "orange";
+    // enemies
+    ctx.fillStyle = "red";
+    enemies.forEach(e => {
       ctx.beginPath();
-      ctx.arc(
-        ship.x - Math.cos(angle) * 20,
-        ship.y - Math.sin(angle) * 20,
-        6 + Math.random() * 4,
-        0,
-        Math.PI * 2
-      );
+      ctx.arc(e.x, e.y, 8, 0, Math.PI * 2);
       ctx.fill();
-    }
+    });
 
   } else {
 
-    // 🪐 PLANET
-    drawPlanet(0, 0);
+    // planet terrain
+    for (let x = -300; x < 300; x += 10) {
+      let h = Math.sin((x + 100) * 0.05) * 50;
 
-    // 👤 PLAYER
-    drawPlayer(player.x, player.y);
+      ctx.fillStyle = "green";
+      ctx.fillRect(x, h, 10, 200);
+
+      // ore
+      if (rand(x) > 0.9) {
+        ctx.fillStyle = "gray";
+        ctx.fillRect(x, h - 10, 8, 8);
+      }
+    }
+
+    // player
+    ctx.fillStyle = "orange";
+    ctx.fillRect(player.x - 5, player.y - 5, 10, 10);
   }
 
   ctx.restore();
+
+  // UI
+  ctx.fillStyle = "white";
+  ctx.fillText("Ore: " + inventory.ore, 20, 30);
 }
 
 // ======================
