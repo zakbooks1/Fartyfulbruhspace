@@ -1,3 +1,4 @@
+
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
@@ -14,8 +15,48 @@ let camera = { x: 0, y: 0 };
 let ship = { x: 0, y: 0, speed: 3 };
 let player = { x: 0, y: 0, speed: 2 };
 
+let angle = 0;
+
 // ======================
-// JOYSTICK (FIXED)
+// AUTO SCALE FUNCTION
+// ======================
+function drawSprite(img, x, y, targetSize = 40, rotation = 0) {
+  if (!img.complete) return;
+
+  let aspect = img.width / img.height;
+
+  let width, height;
+
+  if (aspect > 1) {
+    width = targetSize;
+    height = targetSize / aspect;
+  } else {
+    height = targetSize;
+    width = targetSize * aspect;
+  }
+
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(rotation);
+  ctx.drawImage(img, -width / 2, -height / 2, width, height);
+  ctx.restore();
+}
+
+// ======================
+// LOAD IMAGES
+// ======================
+function loadImage(src) {
+  const img = new Image();
+  img.src = src;
+  return img;
+}
+
+const shipImg = loadImage("assets/ship.png");
+const playerImg = loadImage("assets/player.png");
+const planetImg = loadImage("assets/planet.png");
+
+// ======================
+// JOYSTICK
 // ======================
 let joy = { x: 0, y: 0 };
 
@@ -24,9 +65,7 @@ const stick = document.getElementById("stick");
 
 let dragging = false;
 
-joystick.addEventListener("touchstart", (e) => {
-  dragging = true;
-});
+joystick.addEventListener("touchstart", () => dragging = true);
 
 joystick.addEventListener("touchmove", (e) => {
   if (!dragging) return;
@@ -62,10 +101,10 @@ joystick.addEventListener("touchend", () => {
 });
 
 // ======================
-// BUTTONS (FIXED)
+// BUTTONS
 // ======================
-document.getElementById("warpBtn").addEventListener("click", warp);
-document.getElementById("landBtn").addEventListener("click", togglePlanet);
+document.getElementById("warpBtn").onclick = warp;
+document.getElementById("landBtn").onclick = togglePlanet;
 
 // ======================
 // RANDOM
@@ -103,11 +142,15 @@ function update() {
 
     camera.x = ship.x;
     camera.y = ship.y;
+
+    if (joy.x !== 0 || joy.y !== 0) {
+      angle = Math.atan2(joy.y, joy.x);
+    }
+
   } else {
     player.x += joy.x * player.speed;
     player.y += joy.y * player.speed;
 
-    // FIX: camera follows player now
     camera.x = player.x;
     camera.y = player.y;
   }
@@ -153,22 +196,15 @@ function draw() {
       ctx.fillRect(s.x, s.y, 2, 2);
     });
 
-    // ship
-    ctx.fillStyle = "cyan";
-    ctx.fillRect(ship.x - 6, ship.y - 6, 12, 12);
+    // ship (AUTO SCALED + ROTATED)
+    drawSprite(shipImg, ship.x, ship.y, 50, angle);
 
   } else {
-    // terrain
-    for (let x = -500; x < 500; x += 20) {
-      let h = Math.sin((x + planetSeed) * 0.05) * 50;
+    // planet (AUTO SCALED BIG)
+    drawSprite(planetImg, 0, 0, 300);
 
-      ctx.fillStyle = "green";
-      ctx.fillRect(x, h, 20, 200);
-    }
-
-    // player
-    ctx.fillStyle = "orange";
-    ctx.fillRect(player.x - 6, player.y - 6, 12, 12);
+    // player (AUTO SCALED)
+    drawSprite(playerImg, player.x, player.y, 40);
   }
 
   ctx.restore();
