@@ -18,47 +18,68 @@ let player = { x: 0, y: 0, speed: 2 };
 let angle = 0;
 
 // ======================
-// LOAD SPRITES
+// DRAW PROCEDURAL SHIP
 // ======================
-function loadImage(src) {
-  const img = new Image();
-  img.src = src;
-  return img;
-}
-
-const shipImg = loadImage("assets/ship.png");
-const playerImg = loadImage("assets/player.png");
-const planetImg = loadImage("assets/planet.png");
-
-// ======================
-// DRAW SPRITE (AUTO SCALE)
-// ======================
-function drawSprite(img, x, y, size, rot = 0, alpha = 1) {
-  if (!img.complete) return;
-
+function drawShip(x, y, rot) {
   ctx.save();
-  ctx.globalAlpha = alpha;
-
-  let aspect = img.width / img.height;
-
-  let w, h;
-  if (aspect > 1) {
-    w = size;
-    h = size / aspect;
-  } else {
-    h = size;
-    w = size * aspect;
-  }
-
   ctx.translate(x, y);
   ctx.rotate(rot);
-  ctx.drawImage(img, -w / 2, -h / 2, w, h);
+
+  // Glow
+  ctx.shadowColor = "cyan";
+  ctx.shadowBlur = 20;
+
+  // Body
+  ctx.fillStyle = "#00bfff";
+  ctx.beginPath();
+  ctx.moveTo(0, -20);
+  ctx.lineTo(12, 20);
+  ctx.lineTo(-12, 20);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.shadowBlur = 0;
 
   ctx.restore();
 }
 
 // ======================
-// PARALLAX STARS
+// DRAW PROCEDURAL PLAYER
+// ======================
+function drawPlayer(x, y) {
+  ctx.save();
+  ctx.translate(x, y);
+
+  ctx.fillStyle = "orange";
+
+  // Head
+  ctx.beginPath();
+  ctx.arc(0, -8, 5, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Body
+  ctx.fillRect(-4, -3, 8, 12);
+
+  ctx.restore();
+}
+
+// ======================
+// DRAW PROCEDURAL PLANET
+// ======================
+function drawPlanet(x, y) {
+  let gradient = ctx.createRadialGradient(x, y, 20, x, y, 200);
+  gradient.addColorStop(0, "#2ecc71");
+  gradient.addColorStop(1, "#145a32");
+
+  ctx.fillStyle = gradient;
+
+  ctx.beginPath();
+  ctx.arc(x, y, 150, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+// ======================
+// STARS
 // ======================
 const stars = [];
 
@@ -66,13 +87,12 @@ for (let i = 0; i < 150; i++) {
   stars.push({
     x: Math.random() * 4000 - 2000,
     y: Math.random() * 4000 - 2000,
-    layer: Math.random(), // 0 = far, 1 = close
-    size: Math.random() * 2 + 1
+    layer: Math.random()
   });
 }
 
 // ======================
-// INPUT (JOYSTICK)
+// JOYSTICK
 // ======================
 let joy = { x: 0, y: 0 };
 
@@ -110,7 +130,7 @@ joystick.addEventListener("touchend", () => {
   dragging = false;
   joy.x = 0;
   joy.y = 0;
-  stick.style.transform = `translate(0px, 0px)`;
+  stick.style.transform = "translate(0px, 0px)";
 });
 
 // ======================
@@ -120,30 +140,30 @@ document.getElementById("warpBtn").onclick = warp;
 document.getElementById("landBtn").onclick = togglePlanet;
 
 // ======================
-// RANDOM
+// WARP
 // ======================
-function rand(seed) {
-  let x = Math.sin(seed) * 10000;
-  return x - Math.floor(x);
+function warp() {
+  ship.x = Math.random() * 4000 - 2000;
+  ship.y = Math.random() * 4000 - 2000;
 }
 
 // ======================
-// GALAXY
+// LAND
 // ======================
-const starsBig = [];
-
-for (let i = 0; i < 100; i++) {
-  starsBig.push({
-    x: rand(i) * 4000 - 2000,
-    y: rand(i * 2) * 4000 - 2000
-  });
+function togglePlanet() {
+  if (mode === "space") {
+    mode = "planet";
+    player.x = ship.x;
+    player.y = ship.y;
+  } else {
+    mode = "space";
+  }
 }
 
 // ======================
 // UPDATE
 // ======================
 function update() {
-  // MOVEMENT
   if (mode === "space") {
     ship.x += joy.x * ship.speed;
     ship.y += joy.y * ship.speed;
@@ -154,6 +174,7 @@ function update() {
     if (joy.x !== 0 || joy.y !== 0) {
       angle = Math.atan2(joy.y, joy.x);
     }
+
   } else {
     player.x += joy.x * player.speed;
     player.y += joy.y * player.speed;
@@ -162,31 +183,9 @@ function update() {
     cameraTarget.y = player.y;
   }
 
-  // SMOOTH CAMERA (EASE)
+  // Smooth camera
   camera.x += (cameraTarget.x - camera.x) * 0.08;
   camera.y += (cameraTarget.y - camera.y) * 0.08;
-}
-
-// ======================
-// WARP
-// ======================
-function warp() {
-  let t = starsBig[Math.floor(Math.random() * starsBig.length)];
-  ship.x = t.x;
-  ship.y = t.y;
-}
-
-// ======================
-// LAND / EXIT
-// ======================
-function togglePlanet() {
-  if (mode === "space") {
-    mode = "planet";
-    player.x = ship.x;
-    player.y = ship.y;
-  } else {
-    mode = "space";
-  }
 }
 
 // ======================
@@ -202,35 +201,21 @@ function draw() {
   // 🌌 PARALLAX STARS
   ctx.fillStyle = "white";
   stars.forEach(s => {
-    let parallaxX = s.x - camera.x * s.layer * 0.3;
-    let parallaxY = s.y - camera.y * s.layer * 0.3;
+    let px = s.x - camera.x * s.layer * 0.3;
+    let py = s.y - camera.y * s.layer * 0.3;
 
     ctx.globalAlpha = 0.3 + s.layer * 0.7;
-    ctx.fillRect(parallaxX, parallaxY, s.size, s.size);
+    ctx.fillRect(px, py, 2, 2);
   });
   ctx.globalAlpha = 1;
 
   if (mode === "space") {
-    // 🌟 GLOW EFFECT
-    ctx.shadowColor = "cyan";
-    ctx.shadowBlur = 20;
 
-    drawSprite(
-      shipImg,
-      ship.x,
-      ship.y,
-      60,
-      angle - Math.PI / 2,
-      1
-    );
+    // 🚀 SHIP + THRUSTER
+    drawShip(ship.x, ship.y, angle - Math.PI / 2);
 
-    ctx.shadowBlur = 0;
-
-    // 🔥 THRUSTER EFFECT
-    if (joy.y !== 0 || joy.x !== 0) {
+    if (joy.x !== 0 || joy.y !== 0) {
       ctx.fillStyle = "orange";
-      ctx.globalAlpha = 0.7;
-
       ctx.beginPath();
       ctx.arc(
         ship.x - Math.cos(angle) * 20,
@@ -240,16 +225,15 @@ function draw() {
         Math.PI * 2
       );
       ctx.fill();
-
-      ctx.globalAlpha = 1;
     }
 
   } else {
+
     // 🪐 PLANET
-    drawSprite(planetImg, 0, 0, 300);
+    drawPlanet(0, 0);
 
     // 👤 PLAYER
-    drawSprite(playerImg, player.x, player.y, 40);
+    drawPlayer(player.x, player.y);
   }
 
   ctx.restore();
