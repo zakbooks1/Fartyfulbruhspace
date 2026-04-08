@@ -1,0 +1,36 @@
+body {
+  margin: 0;
+  overflow: hidden;
+  background: black;
+}
+
+canvas {
+  display: block;
+}
+
+/* Joystick */
+#joystick {
+  position: absolute;
+  bottom: 40px;
+  left: 40px;
+  width: 120px;
+  height: 120px;
+  border: 2px solid white;
+  border-radius: 50%;
+}
+
+/* Buttons */
+button {
+  position: absolute;
+  right: 20px;
+  padding: 15px;
+  font-size: 18px;
+}
+
+#warpBtn {
+  bottom: 100px;
+}
+
+#landBtn {
+  bottom: 40px;
+}
